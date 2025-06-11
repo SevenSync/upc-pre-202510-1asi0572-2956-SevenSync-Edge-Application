@@ -1,19 +1,22 @@
 """Interface services for the Health-bounded context."""
 from flask import Blueprint, request, jsonify
 
-from health.application.services import HealthRecordApplicationService
+"""
 from iam.interfaces.services import authenticate_request
+"""
 
-health_api = Blueprint("health_api", __name__)
+from anaytics.application.services import PotRecordApplicationService
+
+analytics_api = Blueprint("analytics_api", __name__)
 
 # Initialize dependencies
-health_record_service = HealthRecordApplicationService()
+pot_record_service = PotRecordApplicationService()
 
-@health_api.route("/api/v1/health-monitoring/data-records", methods=["POST"])
+@analytics_api.route("/api/v1/analytics/pot-record", methods=["POST"])
 def create_health_record():
     """Handle POST requests to create a health record.
 
-    Expects JSON with device_id, bpm, and optional created_at.
+    Expects JSON with device_id, ph, humidity, temperature, salinity, light and created_at.
 
     Returns:
         tuple: (JSON response, status code).
@@ -25,15 +28,23 @@ def create_health_record():
     data = request.json
     try:
         device_id = data["device_id"]
-        bpm = data["bpm"]
+        ph = data["ph"]
+        humidity = data["humidity"]
+        temperature = data["temperature"]
+        salinity = data["salinity"]
+        light = data["light"]
         created_at = data.get("created_at")
-        record = health_record_service.create_health_record(
-            device_id, bpm, created_at, request.headers.get("X-API-Key")
+        record = pot_record_service.create_record(
+            device_id, ph, humidity, temperature, salinity, light, created_at, request.headers.get("X-API-Key")
         )
         return jsonify({
             "id": record.id,
             "device_id": record.device_id,
-            "bpm": record.bpm,
+            "ph": record.ph,
+            "humidity": record.humidity,
+            "temperature": record.temperature,
+            "salinity": record.salinity,
+            "light": record.light,
             "created_at": record.created_at.isoformat() + "Z"
         }), 201
     except KeyError:
