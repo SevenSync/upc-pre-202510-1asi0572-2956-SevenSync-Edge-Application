@@ -33,3 +33,11 @@ class PotRecord:
         self.salinity = salinity
         self.light = light
         self.created_at = created_at
+
+
+class WateringCalculator:
+    @staticmethod
+    def calculate(sensor_data: dict, thresholds: dict) -> int:
+        base_time = thresholds.get('watering_time', 2.5) # Base watering time is 2.5 seconds per 100 milliliters
+        humidity_factor = max(0, 1 - (sensor_data["humidity"] / 100))
+        return int(base_time * (1 + humidity_factor))

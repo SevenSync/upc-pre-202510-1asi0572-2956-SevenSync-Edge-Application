@@ -1,44 +1,10 @@
-from datetime import datetime, timezone
-
+from datetime import datetime, timezone, timedelta
 from dateutil.parser import parse
-
 from anaytics.domain.entities import PotRecord
 
 
 class PotRecordService:
     """Service for managing pot records."""
-
-    def __init__(self):
-        """Initialize the PotServiceRecord."""
-
-    @staticmethod
-    def validate_record(device_id: str,
-                        ph: float,
-                        low_ph_threshold: float,
-                        high_ph_threshold: float,
-                        humidity: float,
-                        low_humidity_threshold: float,
-                        high_humidity_threshold: float,
-                        temperature: float,
-                        low_temperature_threshold: float,
-                        high_temperature_threshold: float,
-                        salinity: float,
-                        low_salinity_threshold: float,
-                        high_salinity_threshold: float,
-                        light: float,
-                        low_light_threshold: float,
-                        high_light_threshold: float,):
-        """Validate the pot record against thresholds."""
-        if not (low_ph_threshold <= ph <= high_ph_threshold):
-            raise ValueError("pH value is out of range")
-        if not (low_humidity_threshold <= humidity <= high_humidity_threshold):
-            raise ValueError("Humidity value is out of range")
-        if not (low_temperature_threshold <= temperature <= high_temperature_threshold):
-            raise ValueError("Temperature value is out of range")
-        if not (low_salinity_threshold <= salinity <= high_salinity_threshold):
-            raise ValueError("Salinity value is out of range")
-        if not (low_light_threshold <= light <= high_light_threshold):
-            raise ValueError("Light value is out of range")
 
     @staticmethod
     def create_record(device_id: str,
@@ -53,7 +19,34 @@ class PotRecordService:
                 parsed_created_at = parse(created_at).astimezone(timezone.utc)
             else:
                 parsed_created_at = datetime.now(timezone.utc)
-        except (ValueError, TypeError):
-            raise ValueError("Invalid data format")
+        except (ValueError, TypeError) as e:
+            raise ValueError(f"Invalid date format: {str(e)}")
 
         return PotRecord(device_id, ph, humidity, temperature, salinity, light, parsed_created_at)
+
+class WateringCalculator:
+    @staticmethod
+    def calculate(sensor_data: dict, thresholds: dict) -> int:
+        """Calcula tiempo de riego usando umbrales externos"""
+        # 1. Obtener valores base de los umbrales
+        base_time = thresholds.get('base_watering_seconds', 300)
+        min_time = thresholds.get('min_watering_seconds', 60)
+        max_time = thresholds.get('max_watering_seconds', 900)
+
+        # 2. Factor de humedad
+        humidity_threshold = thresholds.get('humidity_threshold', 30)
+        humidity_factor = 1.0
+        if sensor_data["humidity"] < humidity_threshold:
+            humidity_factor = thresholds.get('humidity_factor', 1.3)
+
+        # 3. Factor de temperatura
+        temp = sensor_data["temperature"]
+        temp_factor = 1.0
+        if temp < thresholds.get('min_temp', 15):
+            temp_factor = thresholds.get('cold_factor', 0.8)
+        elif temp > thresholds.get('max_temp', 35):
+            temp_factor = thresholds.get('heat_factor', 1.5)
+
+        # 4. Cálculo final
+        watering_time = base_time * humidity_factor * temp_factor
+        return int(max(min_time, min(max_time, watering_time)))
