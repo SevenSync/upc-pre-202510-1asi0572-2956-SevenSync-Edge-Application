@@ -26,6 +26,27 @@ class PotRecordRepository:
             record.id
         )
 
+    def get_last_record(self, device_id: str) -> PotRecord:
+        """Obtener el último registro de un dispositivo"""
+        # Consulta con Peewee
+        record_model = PotRecordModel.select().where(
+            PotRecordModel.device_id == device_id
+        ).order_by(PotRecordModel.created_at.desc()).first()
+
+        if not record_model:
+            raise ValueError(f"No records found for device {device_id}")
+
+        return PotRecord(
+            device_id=record_model.device_id,
+            ph=record_model.ph,
+            humidity=record_model.humidity,
+            temperature=record_model.temperature,
+            salinity=record_model.salinity,
+            light=record_model.light,
+            created_at=record_model.created_at,
+            id=record_model.id
+        )
+
     @staticmethod
     def get_by_device(device_id: str, hours: int = 24) -> list[PotRecord]:
         time_threshold = datetime.now(timezone.utc) - timedelta(hours=hours)

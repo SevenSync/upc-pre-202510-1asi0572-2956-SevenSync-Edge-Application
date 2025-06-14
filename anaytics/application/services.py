@@ -41,6 +41,9 @@ class PotRecordApplicationService:
             )
         )
 
+    def get_last_record(self, device_id: str) -> PotRecord:
+        return self.pot_record_repository.get_last_record(device_id)
+
     def calculate_watering_time(
             self,
             device_id: str,

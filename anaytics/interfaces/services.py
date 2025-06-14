@@ -91,3 +91,48 @@ def calculate_watering_time():
     except Exception as e:
         current_app.logger.error(f"Unhandled error: {str(e)}")
         return jsonify({"error": "Internal server error"}), 500
+
+
+# analytics/interfaces/controllers.py
+@analytics_api.route("/api/v1/analytics/device-status/<device_id>", methods=["GET"])
+@authenticate_request
+def get_device_status(device_id: str):
+    try:
+        # Obtener servicio desde la app
+        app_service = current_app.config["POT_RECORD_SERVICE"]
+
+        # 1. Obtener última lectura
+        last_record = app_service.get_last_record(device_id)
+
+        # 2. Obtener umbrales desde el servicio de thresholds
+        thresholds = app_service.threshold_service.get_thresholds(device_id)
+
+        # 3. Preparar respuesta
+        return jsonify({
+            "device_id": device_id,
+            "last_record": {
+                "humidity": last_record.humidity,
+                "temperature": last_record.temperature,
+                "light": last_record.light,
+                "ph": last_record.ph,
+                "salinity": last_record.salinity,
+                "created_at": last_record.created_at.isoformat() + "Z"
+            },
+            "thresholds": thresholds,
+            "calculated_watering_seconds": WateringCalculator.calculate(
+                sensor_data={
+                    "humidity": last_record.humidity,
+                    "temperature": last_record.temperature,
+                    "light": last_record.light,
+                    "ph": last_record.ph,
+                    "salinity": last_record.salinity
+                },
+                thresholds=thresholds
+            )
+        }), 200
+
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 404
+    except Exception as e:
+        current_app.logger.error(f"Device status error: {str(e)}")
+        return jsonify({"error": "Internal server error"}), 500
