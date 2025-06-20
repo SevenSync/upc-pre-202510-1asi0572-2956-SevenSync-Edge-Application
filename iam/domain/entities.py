@@ -1,5 +1,5 @@
+"""Domain entities for the IAM bounded context."""
 class Device:
-
     def __init__(self, device_id: str, api_key: str, created_at):
         self.device_id = device_id
         self.api_key = api_key
