@@ -1,12 +1,13 @@
 """Interface services for the Pot Data context."""
 from flask import Blueprint, request, jsonify
 from analytics.application.services import PotRecordApplicationService
-from iam.interfaces.services import authenticate_request
 
-pot_data_api = Blueprint("pot_data_api", __name__)
+from iam.interfaces.controllers import authenticate_request
+
+analytics_api = Blueprint("pot_data_api", __name__)
 app_service = PotRecordApplicationService()
 
-@pot_data_api.route("/api/v1/analytics/pot-record", methods=["POST"])
+@analytics_api.route("/api/v1/analytics/pot-record", methods=["POST"])
 def create_pot_record():
     auth_result = authenticate_request()
     if auth_result:

@@ -5,7 +5,6 @@ from iam.application.services import AuthApplicationService
 # Initialize dependencies
 auth_service = AuthApplicationService()
 
-
 def authenticate_request():
     """Authenticates a request. To be used as a dependency by other interfaces."""
     device_id = request.json.get("device_id") if request.json else None
