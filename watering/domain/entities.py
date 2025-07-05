@@ -1,15 +1,17 @@
-"""Domain entities for the Watering context."""
 from datetime import datetime
 
-class WateringOperation:
-    def __init__(self, device_id: str, success: bool, duration: int, timestamp: datetime, id: int = None):
-        self.id = id
+class WateringDecision:
+    """Representa la decisión de riego tomada"""
+    def __init__(self, device_id: str, decision: bool, reason: str, timestamp: datetime):
         self.device_id = device_id
-        self.success = success
-        self.duration = duration
+        self.decision = decision  # True = regar, False = no regar
+        self.reason = reason  # Explicación de la decisión
         self.timestamp = timestamp
 
-class Thresholds:
-    def __init__(self, humidity_min: float, temp_max: float):
-        self.humidity_min = humidity_min
-        self.temp_max = temp_max
+class WateringExecution:
+    """Representa la ejecución física del riego"""
+    def __init__(self, device_id: str, duration: int, timestamp: datetime, success: bool = False):
+        self.device_id = device_id
+        self.duration = duration  # Segundos de riego
+        self.timestamp = timestamp
+        self.success = success

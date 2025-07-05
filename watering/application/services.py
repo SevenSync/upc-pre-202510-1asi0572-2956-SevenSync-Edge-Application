@@ -1,44 +1,52 @@
-"""Application services for the Watering context (versión simplificada)."""
-from datetime import datetime, timezone
-import requests
-from watering.domain.entities import WateringOperation
-from watering.infrastructure.repositories import WateringLogRepository
-from iam.application.services import AuthApplicationService
 
-class WateringApplicationService:
-    def __init__(self):
-        self.log_repo = WateringLogRepository()
-        self.iam_service = AuthApplicationService()
+from watering.domain.entities import WateringExecution
 
-    def _get_decision_from_planning(self, device_id: str) -> dict:
-        """Hace una llamada HTTP interna al endpoint de Planning para obtener la decisión."""
-        planning_url = f"http://127.0.0.1:5000/api/v1/planning/devices/{device_id}/decision"
-        try:
-            response = requests.get(planning_url, timeout=2)
-            response.raise_for_status()
-            return response.json()
-        except requests.exceptions.RequestException as e:
-            print(f"[ERROR] No se pudo obtener la decisión desde Planning: {e}")
-            return {"should_water": False, "duration_seconds": 0}
+from watering.domain.services import WateringDecisionService, WateringExecutionService
 
-    def execute_and_log_operation(self, device_id: str, api_key: str) -> dict:
-        """
-        Obtiene la decisión de Planning, la registra y la devuelve.
-        """
-        if not self.iam_service.authenticate(device_id, api_key):
-            raise PermissionError(f"Authentication failed for device '{device_id}'.")
 
-        # 1. Obtener la decisión del Bounded Context de Planning
-        decision = self._get_decision_from_planning(device_id)
+class WateringOrchestrator:
+    """Orquestador principal de operaciones de riego"""
 
-        # 2. Crear y registrar la operación basada en la decisión recibida
-        operation = WateringOperation(
+    def __init__(self,
+                 decision_service: WateringDecisionService,
+                 execution_service: WateringExecutionService,
+                 analytics_client,
+                 thresholds_client,
+                 device_client,
+                 repository):
+        self.decision_service = decision_service
+        self.execution_service = execution_service
+        self.analytics_client = analytics_client
+        self.thresholds_client = thresholds_client
+        self.device_client = device_client
+        self.repository = repository
+
+    def execute_watering_workflow(self, device_id: str) -> WateringExecution:
+        # 1. Obtener datos analíticos actuales
+        analytics = self.analytics_client.get_current_analytics(device_id)
+
+        # 2. Obtener umbrales configurados
+        thresholds = self.thresholds_client.get_thresholds(device_id)
+
+        # 3. Tomar decisión de dominio
+        decision = self.decision_service.make_watering_decision(analytics, thresholds)
+
+        # 4. Calcular duración del riego
+        duration = self.execution_service.calculate_water_duration(decision, analytics)
+
+        # 5. Si no se debe regar, retornar ejecución vacía
+        if duration <= 0:
+            return WateringExecution(device_id, 0, datetime.now())
+
+        # 6. Ejecutar riego físico
+        execution_result = self.device_client.activate_watering(device_id, duration)
+
+        # 7. Registrar ejecución
+        execution = WateringExecution(
             device_id=device_id,
-            success=decision.get("should_water", False),
-            duration=decision.get("duration_seconds", 0),
-            timestamp=datetime.now(timezone.utc)
+            duration=duration,
+            timestamp=datetime.now()
         )
-        self.log_repo.save(operation)
+        execution.success = execution_result
 
-        # 3. Devolver la decisión para que el firmware la ejecute
-        return decision
+        return self.repository.save(execution)
