@@ -1,4 +1,3 @@
-# operation/interfaces/controllers.py
 from flask import Blueprint, request, jsonify, current_app
 
 operation_api = Blueprint("operation_api", __name__)

@@ -1,4 +1,3 @@
-# operation/domain/services.py
 from datetime import datetime
 
 from watering.domain.entities import WateringDecision

@@ -1,4 +1,3 @@
-from datetime import datetime
 
 from watering.domain.entities import WateringExecution
 
@@ -51,4 +50,3 @@ class WateringOrchestrator:
         execution.success = execution_result
 
         return self.repository.save(execution)
-    # Commit message:

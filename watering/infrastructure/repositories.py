@@ -1,4 +1,3 @@
-# operation/infrastructure/repositories.py
 from watering.domain.entities import WateringExecution
 from watering.infrastructure.models import WateringExecutionModel
 
