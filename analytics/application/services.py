@@ -1,56 +1,60 @@
 from analytics.domain.entities import PotRecord
-from analytics.domain.services import PotRecordService, WateringCalculator
+from analytics.domain.services import PotRecordService
 from analytics.infrastructure.repositories import PotRecordRepository
 from iam.application.services import AuthApplicationService
+from planning.application.services import PlanningApplicationService
 
 
 class PotRecordApplicationService:
-    def __init__(
-            self,
-            repo: PotRecordRepository,
-            record_service: PotRecordService,
-            threshold_service,
-            auth_service: AuthApplicationService
-    ):
-        self.repo = repo
-        self.record_service = record_service
-        self.threshold_service = threshold_service
-        self.auth_service = auth_service
+    def __init__(self):
+        self.repo = PotRecordRepository()
+        self.record_service = PotRecordService()
+        self.planning_service = PlanningApplicationService()
+        self.auth_service = AuthApplicationService()
 
     def create_pot_record(
             self,
             device_id: str,
-            sensor_data: dict,
+            temperature: float,
+            humidity: float,
+            light: float,
+            salinity: float,
+            ph: float,
             created_at: str,
             api_key: str
     ) -> PotRecord:
         if not self.auth_service.authenticate(device_id, api_key):
-            raise PermissionError("Dispositivo no autorizado")
+            raise PermissionError(f"Invalid device_id '{device_id}' or API key '{api_key}'.")
 
-        return self.repo.save(
-            self.record_service.create_record(
-                device_id=device_id,
-                ph=sensor_data['ph'],
-                humidity=sensor_data['humidity'],
-                temperature=sensor_data['temperature'],
-                salinity=sensor_data['salinity'],
-                light=sensor_data['light'],
-                created_at=created_at
-            )
-        )
+        record =self.record_service.create_record(device_id, temperature, humidity, light, salinity, ph, created_at)
+        return self.repo.save(record)
 
-    def get_last_record(self, device_id: str) -> PotRecord:
+    def get_records_by_device_id(
+            self,
+            device_id: str,
+            api_key: str
+    ) -> list[PotRecord]:
+        if not self.auth_service.authenticate(device_id, api_key):
+            raise PermissionError(f"Invalid device_id '{device_id}' or API key '{api_key}'.")
+
+        return self.repo.get_records_by_device(device_id)
+
+    def get_last_record( # Se necesita para el planning, especificamente "calculate_watering_time_from_tresholds"
+            self,
+            device_id: str,
+            api_key: str
+    ) -> PotRecord:
+        if not self.auth_service.authenticate(device_id, api_key):
+            raise PermissionError(f"Invalid device_id '{device_id}' or API key '{api_key}'.")
+
         return self.repo.get_last_record(device_id)
 
     def calculate_watering_time(
             self,
             device_id: str,
-            sensor_data: dict,
             api_key: str
-    ) -> int:
+    ) -> float:
         if not self.auth_service.authenticate(device_id, api_key):
-            raise PermissionError("Dispositivo no autorizado")
+            raise PermissionError(f"Invalid device_id '{device_id}' or API key '{api_key}'.")
 
-        thresholds = self.threshold_service.get_device_thresholds(device_id)
-
-        return WateringCalculator.calculate(sensor_data, thresholds)
+        return  self.planning_service.calculate_watering_time_from_thresholds(device_id)

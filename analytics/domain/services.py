@@ -6,40 +6,32 @@ from analytics.domain.entities import PotRecord
 class PotRecordService:
     @staticmethod
     def create_record(device_id: str,
-                      ph: float,
-                      humidity: float,
                       temperature: float,
-                      salinity: float,
+                      humidity: float,
                       light: float,
-                      created_at: str | None) -> PotRecord:
+                      salinity: float,
+                      ph: float,
+                      created_at: str) -> PotRecord:
         try:
+            if not device_id:
+                raise ValueError("Device ID cannot be empty, current value: {}".format(device_id))
+            if not isinstance(temperature, (int, float)):
+                raise ValueError("Temperature must be a number, current value: {}".format(temperature))
+            if not isinstance(humidity, (int, float)):
+                raise ValueError("Humidity must be a number, current value: {}".format(humidity))
+            if not isinstance(light, (int, float)):
+                raise ValueError("Light must be a number, current value: {}".format(light))
+            if not isinstance(salinity, (int, float)):
+                raise ValueError("Salinity must be a number, current value: {}".format(salinity))
+            if not isinstance(ph, (int, float)):
+                raise ValueError("ph must be a number, current value: {}".format(ph))
+
             if created_at:
                 parsed_created_at = parse(created_at).astimezone(timezone.utc)
             else:
                 parsed_created_at = datetime.now(timezone.utc)
+
         except (ValueError, TypeError) as e:
             raise ValueError(f"Invalid date format: {str(e)}")
 
-        return PotRecord(device_id, ph, humidity, temperature, salinity, light, parsed_created_at)
-
-class WateringCalculator:
-    @staticmethod
-    def calculate(sensor_data: dict, thresholds: dict) -> int:
-        base_time = thresholds.get('base_watering_seconds', 300)
-        min_time = thresholds.get('min_watering_seconds', 60)
-        max_time = thresholds.get('max_watering_seconds', 900)
-
-        humidity_threshold = thresholds.get('humidity_threshold', 30)
-        humidity_factor = 1.0
-        if sensor_data["humidity"] < humidity_threshold:
-            humidity_factor = thresholds.get('humidity_factor', 1.3)
-
-        temp = sensor_data["temperature"]
-        temp_factor = 1.0
-        if temp < thresholds.get('min_temp', 15):
-            temp_factor = thresholds.get('cold_factor', 0.8)
-        elif temp > thresholds.get('max_temp', 35):
-            temp_factor = thresholds.get('heat_factor', 1.5)
-
-        watering_time = base_time * humidity_factor * temp_factor
-        return max(min_time, min(max_time, watering_time))
+        return PotRecord(device_id, temperature, humidity, light, salinity, ph, parsed_created_at)

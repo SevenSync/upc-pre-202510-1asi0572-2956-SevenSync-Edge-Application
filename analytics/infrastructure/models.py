@@ -6,11 +6,11 @@ from shared.infrastructure.database import db
 class PotRecordModel(Model):
     id = AutoField()
     device_id = CharField()
-    ph = FloatField()
-    humidity = FloatField()
     temperature = FloatField()
-    salinity = FloatField()
+    humidity = FloatField()
     light = FloatField()
+    salinity = FloatField()
+    ph = FloatField()
     created_at = DateTimeField()
 
     class Meta:

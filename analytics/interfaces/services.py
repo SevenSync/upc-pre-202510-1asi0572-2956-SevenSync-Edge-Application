@@ -1,31 +1,39 @@
 from flask import Blueprint, request, jsonify, current_app
 from datetime import datetime, timezone
 
+from analytics.application.services import PotRecordApplicationService
 from iam.interfaces.services import authenticate_request
 
 
 analytics_api = Blueprint("analytics_api", __name__)
 
-@analytics_api.route("/api/v1/analytics/pot-record", methods=["POST"])
-def create_pot_record():
+pot_record_service = PotRecordApplicationService()
+
+@analytics_api.route("/api/v1/analytics/records", methods=["POST"])
+def create_pot_record_on_backend():
+    auth_result = authenticate_request()
+    if auth_result:
+        return auth_result
+
     data = request.json
+
     try:
-        app_service = current_app.config["POT_RECORD_SERVICE"]
+        device_id = data["device_id"]
+        temperature = data["temperature"]
+        humidity = data["humidity"]
+        light = data["light"]
+        salinity = data["salinity"]
+        ph = data["ph"]
+        created_at = data.get("created_at", datetime.now(timezone.utc).isoformat() + "Z")
 
-        required_fields = ["device_id", "ph", "humidity", "temperature", "salinity", "light"]
-        if not all(field in data for field in required_fields):
-            return jsonify({"error": "Missing required fields"}), 400
-
-        record = app_service.create_pot_record(
-            device_id=data["device_id"],
-            sensor_data={
-                "ph": data["ph"],
-                "humidity": data["humidity"],
-                "temperature": data["temperature"],
-                "salinity": data["salinity"],
-                "light": data["light"]
-            },
-            created_at=data.get("created_at"),
+        record = pot_record_service.create_pot_record(
+            device_id=device_id,
+            temperature=temperature,
+            humidity=humidity,
+            light=light,
+            salinity=salinity,
+            ph=ph,
+            created_at=created_at,
             api_key=request.headers.get("X-API-Key")
         )
 
@@ -39,7 +47,6 @@ def create_pot_record():
             "light": record.light,
             "created_at": record.created_at.isoformat() + "Z"
         }), 201
-
     except KeyError as e:
         return jsonify({"error": f"Missing field: {str(e)}"}), 400
     except ValueError as e:
@@ -50,26 +57,17 @@ def create_pot_record():
 
 @analytics_api.route("/api/v1/analytics/calculate-time-watering", methods=["POST"])
 def calculate_watering_time():
+    auth_result = authenticate_request()
+    if auth_result:
+        return auth_result
+
     data = request.json
+
     try:
-        # Obtener servicio inyectado
-        app_service = current_app.config["POT_RECORD_SERVICE"]
+        device_id = data["device_id"]
 
-        # Validar campos requeridos
-        required_fields = ["device_id", "ph", "humidity", "temperature", "salinity", "light"]
-        if not all(field in data for field in required_fields):
-            return jsonify({"error": "Missing required fields"}), 400
-
-        # Calcular tiempo usando el servicio de aplicación
-        watering_seconds = app_service.calculate_watering_time(
-            device_id=data["device_id"],
-            sensor_data={
-                "ph": data["ph"],
-                "humidity": data["humidity"],
-                "temperature": data["temperature"],
-                "salinity": data["salinity"],
-                "light": data["light"]
-            },
+        watering_seconds = pot_record_service.calculate_watering_time(
+            device_id,
             api_key=request.headers.get("X-API-Key")
         )
 
@@ -78,7 +76,6 @@ def calculate_watering_time():
             "watering_time_seconds": watering_seconds,
             "calculated_at": datetime.now(timezone.utc).isoformat() + "Z"
         }), 200
-
     except KeyError as e:
         return jsonify({"error": f"Missing field: {str(e)}"}), 400
     except ValueError as e:
@@ -89,43 +86,37 @@ def calculate_watering_time():
         current_app.logger.error(f"Unhandled error: {str(e)}")
         return jsonify({"error": "Internal server error"}), 500
 
-@authenticate_request
-@analytics_api.route("/api/v1/analytics/device-status/<device_id>", methods=["GET"])
+
+@analytics_api.route("/api/v1/analytics/device-status/<device_id>/records", methods=["POST"])
 def get_device_status(device_id: str):
+    auth_result = authenticate_request()
+    if auth_result:
+        return auth_result
+
+    data = request.json
+
     try:
-        # Obtener servicio desde la app
-        app_service = current_app.config["POT_RECORD_SERVICE"]
+        device_id = data["device_id"]
 
-        # 1. Obtener última lectura
-        last_record = app_service.get_last_record(device_id)
+        records = pot_record_service.get_records_by_device_id(
+            device_id,
+            api_key=request.headers.get("X-API-Key")
+        )
 
-        # 2. Obtener umbrales desde el servicio de thresholds
-        thresholds = app_service.threshold_service.get_thresholds(device_id)
-
-        # 3. Preparar respuesta
         return jsonify({
             "device_id": device_id,
-            "last_record": {
-                "humidity": last_record.humidity,
-                "temperature": last_record.temperature,
-                "light": last_record.light,
-                "ph": last_record.ph,
-                "salinity": last_record.salinity,
-                "created_at": last_record.created_at.isoformat() + "Z"
-            },
-            "thresholds": thresholds,
-            "calculated_watering_seconds": WateringCalculator.calculate(
-                sensor_data={
-                    "humidity": last_record.humidity,
-                    "temperature": last_record.temperature,
-                    "light": last_record.light,
-                    "ph": last_record.ph,
-                    "salinity": last_record.salinity
-                },
-                thresholds=thresholds
-            )
+            "records": [
+                {
+                    "id": record.id,
+                    "temperature": record.temperature,
+                    "humidity": record.humidity,
+                    "light": record.light,
+                    "salinity": record.salinity,
+                    "ph": record.ph,
+                    "created_at": record.created_at.isoformat() + "Z"
+                } for record in records
+            ]
         }), 200
-
     except ValueError as e:
         return jsonify({"error": str(e)}), 404
     except Exception as e:
