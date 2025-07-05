@@ -1,25 +1,19 @@
 """
-Database initialization for the Smart Band Edge Service.
-
-Sets up the SQLite database and creates required tables for devices and health records.
+Database initialization for the MaceTech Edge Service.
 """
 from peewee import SqliteDatabase
 
-# Initialize SQLite database
-db = SqliteDatabase('macetech.db')
+# Initialize SQLite database object
+db = SqliteDatabase('macetech_edge.db')
 
-
-def init_db() -> None:
+def init_db_tables() -> None:
     """
-    Initialize the database and create tables for Device and HealthRecord models.
+    Creates all necessary tables. Assumes the database connection is already open.
     """
-    db.connect()
-    """
+    # Esta función ya no maneja connect() o close()
     from iam.infrastructure.models import Device
-    from health.infrastructure.models import HealthRecord
-    """
-    db.create_tables([], safe=True)
-    """
-    AGREGAR MODELOS AQUÍ, DENTRO DDE create_tables
-    """
-    db.close()
+    from analytics.infrastructure.models import PotRecord
+    from watering.infrastructure.models import WateringLog
+
+    db.create_tables([Device, PotRecord, WateringLog], safe=True)
+    print("[DB] Tablas verificadas/creadas.")
