@@ -1,15 +1,16 @@
-"""Peewee models for the Pot Data context."""
-from peewee import Model, AutoField, FloatField, IntegerField, CharField, DateTimeField
+from peewee import Model, AutoField, FloatField, CharField, DateTimeField
+
 from shared.infrastructure.database import db
 
-class PotRecord(Model):
+
+class PotRecordModel(Model):
     id = AutoField()
     device_id = CharField()
-    temperature = FloatField()
-    humidity = FloatField()
-    light = IntegerField()
-    salinity = FloatField()
     ph = FloatField()
+    humidity = FloatField()
+    temperature = FloatField()
+    salinity = FloatField()
+    light = FloatField()
     created_at = DateTimeField()
 
     class Meta:

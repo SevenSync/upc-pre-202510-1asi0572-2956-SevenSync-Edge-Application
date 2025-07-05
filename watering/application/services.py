@@ -1,3 +1,4 @@
+from datetime import datetime
 
 from watering.domain.entities import WateringExecution
 
@@ -5,7 +6,6 @@ from watering.domain.services import WateringDecisionService, WateringExecutionS
 
 
 class WateringOrchestrator:
-    """Orquestador principal de operaciones de riego"""
 
     def __init__(self,
                  decision_service: WateringDecisionService,
@@ -22,26 +22,19 @@ class WateringOrchestrator:
         self.repository = repository
 
     def execute_watering_workflow(self, device_id: str) -> WateringExecution:
-        # 1. Obtener datos analíticos actuales
         analytics = self.analytics_client.get_current_analytics(device_id)
 
-        # 2. Obtener umbrales configurados
         thresholds = self.thresholds_client.get_thresholds(device_id)
 
-        # 3. Tomar decisión de dominio
         decision = self.decision_service.make_watering_decision(analytics, thresholds)
 
-        # 4. Calcular duración del riego
         duration = self.execution_service.calculate_water_duration(decision, analytics)
 
-        # 5. Si no se debe regar, retornar ejecución vacía
         if duration <= 0:
             return WateringExecution(device_id, 0, datetime.now())
 
-        # 6. Ejecutar riego físico
         execution_result = self.device_client.activate_watering(device_id, duration)
 
-        # 7. Registrar ejecución
         execution = WateringExecution(
             device_id=device_id,
             duration=duration,

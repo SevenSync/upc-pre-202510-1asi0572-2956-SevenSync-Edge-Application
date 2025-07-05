@@ -1,4 +1,3 @@
-"""Repositories for the IAM bounded context."""
 from typing import Optional
 import peewee
 from iam.domain.entities import Device

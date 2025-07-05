@@ -1,5 +1,3 @@
-"""Application services for the IAM bounded context."""
-from typing import Optional
 from iam.domain.entities import Device
 from iam.domain.services import AuthService
 from iam.infrastructure.repositories import DeviceRepository

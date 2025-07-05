@@ -1,22 +1,17 @@
 """Flask application entry point for the MaceTech Edge Service."""
 from flask import Flask
 from shared.infrastructure.database import db, init_db_tables
-# --- Importar todos los blueprints ---
-from iam.interfaces.controllers import iam_api
-from analytics.interfaces.services import analytics_api
-from watering.interfaces.services import watering_api
-from planning.interfaces.controllers import planning_api # <-- NUEVA IMPORTACIÓN
+from watering.interfaces.services import operation_api
+from planning.interfaces.controllers import planning_api
 from iam.application.services import AuthApplicationService
 
 app = Flask(__name__)
 
-# --- Registrar todos los Bounded Contexts ---
 app.register_blueprint(iam_api)
 app.register_blueprint(analytics_api)
-app.register_blueprint(watering_api)
-app.register_blueprint(planning_api) # <-- NUEVO REGISTRO
+app.register_blueprint(operation_api)
+app.register_blueprint(planning_api)
 
-# ... (el resto del archivo permanece igual)
 @app.before_request
 def before_request_handler():
     db.connect()

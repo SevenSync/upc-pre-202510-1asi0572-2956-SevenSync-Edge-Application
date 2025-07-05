@@ -1,4 +1,3 @@
-"""Peewee models for the IAM bounded context."""
 from peewee import Model, CharField, DateTimeField
 from shared.infrastructure.database import db
 
@@ -7,7 +6,6 @@ class Device(Model):
     api_key = CharField()
     created_at = DateTimeField()
 
-
-class Meta:
-    database    = db
-    table_name  = 'devices'
+    class Meta:
+        database    = db
+        table_name  = 'devices'

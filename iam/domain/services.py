@@ -1,4 +1,3 @@
-"""Domain services for the IAM bounded context."""
 from typing import Optional
 from iam.domain.entities import Device
 

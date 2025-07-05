@@ -1,5 +1,5 @@
 """Domain services for the Planning context."""
-from analytics.domain.entities import PotRecord
+from analytics import PotRecord
 from planning.domain.entities import Thresholds, WateringDecision
 
 

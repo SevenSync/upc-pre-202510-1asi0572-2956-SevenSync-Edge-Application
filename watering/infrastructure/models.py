@@ -1,8 +1,8 @@
-from peewee import Model, AutoField, FloatField, CharField, DateTimeField, BooleanField
+from peewee import AutoField, FloatField, CharField, DateTimeField, BooleanField, Model
 
 from shared.infrastructure.database import db
 
-class WateringExecutionModel:
+class WateringExecutionModel(Model):
     id = AutoField()
     device_id = CharField()
     duration = FloatField()
