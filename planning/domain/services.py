@@ -1,34 +1,43 @@
-"""Domain services for the Planning context."""
-
-
+from planning.domain.entities import PotThreshold, WateringDecision
+from analytics.domain.entities import PotRecord
 
 class PlanningService:
+
     @staticmethod
-    def calculate_watering_time_from_thresholds(device_id: str) -> float:
-        try:
-            if not device_id:
-                raise ValueError("Device ID cannot be empty, current value: {}".format(device_id))
-        except (ValueError, TypeError) as e:
-            raise ValueError(f"Invalid date format: {str(e)}")
+    def make_watering_decision(
+        pot_record: PotRecord,
+        thresholds: PotThreshold
+    ) -> WateringDecision:
 
-class WateringCalculator:
-    @staticmethod
-    def calculate(device_id, thresholds: dict) -> float:
-        base_time = float(thresholds.get('base_watering_seconds', 300))
-        min_time = float(thresholds.get('min_watering_seconds', 60))
-        max_time = float(thresholds.get('max_watering_seconds', 900))
+        if not pot_record:
+            raise ValueError("PotRecord is required to make a decision.")
+        if not thresholds:
+            raise ValueError("PotThresholds are required to make a decision.")
 
-        humidity_threshold = thresholds.get('humidity_threshold', 30)
-        humidity_factor = 1.0
-        if pot_record.humidity < humidity_threshold:
-            humidity_factor = thresholds.get('humidity_factor', 1.3)
+        reasons_to_water = []
+        if pot_record.humidity < thresholds.humidity.min:
+            reasons_to_water.append(f"Humidity ({pot_record.humidity}%) is below minimum ({thresholds.humidity.min}%).")
 
-        temp = pot_record.temperature
-        temp_factor = 1.0
-        if temp < thresholds.get('min_temp', 15):
-            temp_factor = thresholds.get('cold_factor', 0.8)
-        elif temp > thresholds.get('max_temp', 35):
-            temp_factor = thresholds.get('heat_factor', 1.5)
+        if pot_record.temperature > thresholds.temperature.max:
+            reasons_to_water.append(f"Temperature ({pot_record.temperature}°C) is above maximum ({thresholds.temperature.max}°C).")
 
-        watering_time = base_time * humidity_factor * temp_factor
-        return max(min_time, min(max_time, watering_time))
+        if not reasons_to_water:
+            return WateringDecision(should_water=False, reason="All metrics are within thresholds.")
+
+        base_time = 30.0
+        min_time = 10.0
+        max_time = 90.0
+        duration = base_time
+
+        if pot_record.humidity < thresholds.humidity.min:
+            humidity_diff = thresholds.humidity.min - pot_record.humidity
+            duration += humidity_diff * 0.5
+
+        if pot_record.temperature > thresholds.temperature.max:
+            temp_diff = pot_record.temperature - thresholds.temperature.max
+            duration += temp_diff * 1.0
+
+        final_duration = max(min_time, min(max_time, duration))
+        reason_summary = " | ".join(reasons_to_water)
+
+        return WateringDecision(should_water=True, duration_seconds=final_duration, reason=reason_summary)

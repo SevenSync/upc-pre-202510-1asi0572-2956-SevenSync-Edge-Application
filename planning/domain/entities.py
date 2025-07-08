@@ -1,5 +1,5 @@
+# planning/domain/entities.py
 from typing import NamedTuple
-
 
 class Range(NamedTuple):
     min: float
@@ -7,13 +7,15 @@ class Range(NamedTuple):
 
 class PotThreshold:
     def __init__(self,
-                temperature: Range,
-                humidity: Range,
-                light: Range,
-                salinity: Range,
-                ph: Range,
-                id: int = None):
+                 device_id: str,
+                 temperature: Range,
+                 humidity: Range,
+                 light: Range,
+                 salinity: Range,
+                 ph: Range,
+                 id: int = None):
         self.id = id
+        self.device_id = device_id
         self.temperature = temperature
         self.humidity = humidity
         self.light = light
@@ -21,6 +23,7 @@ class PotThreshold:
         self.ph = ph
 
 class WateringDecision:
-    def __init__(self, should_water: bool, duration_seconds: float = 0):
+    def __init__(self, should_water: bool, duration_seconds: float = 0.0, reason: str = "N/A"):
         self.should_water = should_water
-        self.duration_seconds = duration_seconds
+        self.duration_seconds = round(duration_seconds, 2)
+        self.reason = reason
