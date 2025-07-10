@@ -1,47 +1,63 @@
-from datetime import datetime
+# /watering/domain/services.py
+from typing import NamedTuple
+from arm.domain.entities import PotStateRecord
+from planning.domain.entities import PotThreshold
 
-from watering.domain.entities import WateringDecision
-
+class WateringAction(NamedTuple):
+    """
+    # A Value Object representing a calculated action.
+    """
+    should_water: bool
+    volume_ml: float
+    duration_seconds: float
+    reason: str
 
 class WateringDecisionService:
+    """
+    # This Domain Service contains the core, pure business logic for deciding IF and HOW to water.
+    """
+    VALVE_FLOW_RATE_LPS = 0.33  # Liters Per Second, based on typical hardware specs. This makes the service's calculations explicit and self-contained.
+
 
     @staticmethod
-    def make_watering_decision(analytics_data: dict, thresholds: dict) -> WateringDecision:
-        reasons = []
-        decision = False
+    def decide_action(state: PotStateRecord, thresholds: PotThreshold) -> WateringAction:
+        """
+        # Combines current device state and cloud-provided thresholds to decide on a course of action.
+        """
+        reasons_for_action = []
 
-        if analytics_data["humidity"] < thresholds["min_humidity"]:
-            decision = True
-            reasons.append("humidity_below_threshold")
+        if state.humidity < thresholds.humidity.min:
+            reasons_for_action.append(f"Humidity ({state.humidity}%) is below minimum ({thresholds.humidity.min}%).")
 
-        if analytics_data["temperature"] > thresholds["max_temperature"]:
-            decision = True
-            reasons.append("temperature_above_threshold")
+        if state.temperature > thresholds.temperature.max:
+            reasons_for_action.append(f"High temperature detected ({state.temperature}°C).")
 
-        if "min_light" in thresholds and analytics_data["light"] < thresholds["min_light"]:
-            decision = True
-            reasons.append("insufficient_light")
+        if not reasons_for_action:
+            return WateringAction(should_water=False, volume_ml=0, duration_seconds=0, reason="Conditions are optimal.")
 
-        return WateringDecision(
-            device_id=analytics_data["device_id"],
-            decision=decision,
-            reason="|".join(reasons) if reasons else "no_need",
-            timestamp=datetime.now()
+        # --- Calculate required VOLUME in milliliters ---
+        volume_needed_ml = 0.0
+
+        if state.humidity < thresholds.humidity.min:
+            humidity_deficit = thresholds.humidity.min - state.humidity
+            volume_needed_ml += humidity_deficit * 15.0
+
+        if state.temperature > thresholds.temperature.max:
+            volume_needed_ml += 50.0
+
+        # --- Convert VOLUME to DURATION using the hardware CONSTANT ---
+        # CHANGED: Instead of using thresholds.flow_rate_lps, we use the class constant.
+        flow_rate_ml_per_second = WateringDecisionService.VALVE_FLOW_RATE_LPS * 1000
+
+        if flow_rate_ml_per_second <= 0:
+            return WateringAction(should_water=False, volume_ml=0, duration_seconds=0, reason="Invalid flow rate constant (0).")
+
+        calculated_duration = volume_needed_ml / flow_rate_ml_per_second
+        final_duration = min(calculated_duration, 90.0)
+
+        return WateringAction(
+            should_water=True,
+            volume_ml=round(volume_needed_ml, 2),
+            duration_seconds=round(final_duration, 2),
+            reason=" | ".join(reasons_for_action)
         )
-
-
-class WateringExecutionService:
-
-    @staticmethod
-    def calculate_water_duration(decision: WateringDecision, analytics: dict) -> int:
-        if not decision.decision:
-            return 0
-
-        base_time = 2.5
-        humidity_factor = 1 - (analytics["humidity"] / 100)
-
-        temp_factor = 1.0
-        if analytics["temperature"] > 30:
-            temp_factor = 1.5
-
-        return int(base_time * humidity_factor * temp_factor)
