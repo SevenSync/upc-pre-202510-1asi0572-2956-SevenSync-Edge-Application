@@ -12,6 +12,7 @@ def execute_watering_operation():
         orchestrator = current_app.config["WATERING_ORCHESTRATOR"]
         api_key = request.headers.get("X-API-Key")
         device_id = request.json.get("deviceId")
+        print(f"DEBUG: API received -> deviceId: '{device_id}', apiKey: '{api_key}'")
 
         if not api_key or not device_id:
             return jsonify({"error": "X-API-Key header and deviceId in body are required"}), 400

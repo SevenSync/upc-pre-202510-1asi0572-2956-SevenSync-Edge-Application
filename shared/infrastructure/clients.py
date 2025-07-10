@@ -1,22 +1,46 @@
 # /shared/infrastructure/clients.py
 import requests
 
-# Import domain entities from their respective bounded contexts.
-# The client's job is to translate to/from these pure domain objects.
 from planning.domain.entities import PotThreshold, Range
 from arm.domain.entities import PotStateRecord
+from watering.domain.entities import WateringExecution
 
 
 class CloudClient:
     """
     # An infrastructure client responsible for all communication
-    # with the MaceTech Cloud API. It acts as an Anti-Corruption Layer,
-    # translating between the cloud's data structures (JSON Resources)
-    # and the edge application's internal domain entities.
+    # with the MaceTech Cloud API. It acts as an Anti-Corruption Layer.
     """
     def __init__(self, base_url: str):
-        # Ensure the base URL does not have a trailing slash for clean URL joining.
         self.base_url = base_url.rstrip('/')
+
+    # --- Watering Log Synchronization (This is the method to refactor) ---
+
+    def push_watering_log(self, execution_log: WateringExecution) -> bool:
+        """
+        # Pushes a watering execution log to the new cloud endpoint.
+        # This aligns with the final WateringController in the C# backend.
+        """
+        # UPDATED: The URL now points to the new route structure.
+        url = f"{self.base_url}/api/v1/watering-history/device/{execution_log.device_id}/create-log"
+
+        # The payload matches the CreateWateringLogResource record in C#.
+        payload = {
+            "durationSeconds": execution_log.duration_seconds,
+            "wasSuccessful": execution_log.success,
+            "reason": execution_log.reason
+        }
+
+        try:
+            print(f"[CloudClient] Pushing watering log to: {url}")
+            # This endpoint is [AllowAnonymous], so no Authorization header is needed.
+            response = requests.post(url, json=payload, timeout=10)
+            response.raise_for_status()
+            # The backend now returns the created resource, so a 2xx status is enough for success.
+            return response.ok
+        except requests.exceptions.RequestException as e:
+            print(f"[CloudClient] ERROR: Could not push watering log. Details: {e}")
+            return False
 
     # --- Pot Provisioning Methods (Used for testing and simulation) ---
 

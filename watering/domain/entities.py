@@ -10,7 +10,7 @@ class WateringExecution:
                  duration_seconds: float,
                  timestamp: datetime,
                  success: bool,
-                 reason: str, # ADDED: To store the reason for the action/non-action.
+                 reason: str,
                  id: int = None):
         self.id = id
         self.device_id = device_id
