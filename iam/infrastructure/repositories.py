@@ -39,7 +39,7 @@ class DeviceRepository:
         # Gets or creates the test device for development.
         # This refactored version is more robust and ensures the API key is always correct.
         """
-        device_id = "smart-band-001"
+        device_id = "1001"
         correct_api_key = "test-api-key-123"
 
         # Use get_or_create which is atomic and safe.

@@ -144,7 +144,7 @@ def sync_state_job():
         cloud_sync_service = app.config["CLOUD_SYNC_SERVICE"]
         auth_service = app.config["AUTH_APP_SERVICE"]
 
-        device_id = "smart-band-001"  # Placeholder for actual device ID
+        device_id = "1001"
         api_key = auth_service.get_test_device_api_key()
 
         if api_key:
