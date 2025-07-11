@@ -7,7 +7,7 @@ class WateringExecutionModel(Model):
     duration_seconds = FloatField()
     timestamp = DateTimeField()
     success = BooleanField(default=False)
-    reason = TextField() # ADDED: To store the detailed reason string.
+    reason = TextField()
 
     class Meta:
         database = db

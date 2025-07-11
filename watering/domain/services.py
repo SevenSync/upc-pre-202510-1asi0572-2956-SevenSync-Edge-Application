@@ -46,7 +46,6 @@ class WateringDecisionService:
             volume_needed_ml += 50.0
 
         # --- Convert VOLUME to DURATION using the hardware CONSTANT ---
-        # CHANGED: Instead of using thresholds.flow_rate_lps, we use the class constant.
         flow_rate_ml_per_second = WateringDecisionService.VALVE_FLOW_RATE_LPS * 1000
 
         if flow_rate_ml_per_second <= 0:

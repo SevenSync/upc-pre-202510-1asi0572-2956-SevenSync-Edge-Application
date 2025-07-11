@@ -42,40 +42,39 @@ class WateringOrchestrator:
 
     def execute_watering_cycle(self, device_id: str, api_key: str) -> WateringExecution:
         """
-        # Executes one full "sense -> think -> act -> log -> sync" cycle.
-        # This refactored version uses a guard clause for clarity and correctness.
+        # Executes one full cycle, now with resilient threshold fetching.
         """
-        # --- 1. Sense: Gather all necessary information ---
+        # 1. Sense: Gather all necessary information.
         if not self.auth_service.authenticate(device_id, api_key):
             raise PermissionError("Authentication failed for watering cycle.")
 
         current_state = self.arm_service.get_last_state_record(device_id, api_key)
-        thresholds = self.planning_service.get_thresholds(device_id)
 
-        # --- 2. Guard Clause: Handle failure cases first and exit early ---
+        # --- RESILIENT THRESHOLD FETCHING LOGIC ---
+
+        # Try to get fresh thresholds from the cloud first.
+        thresholds = self.planning_service.get_and_cache_thresholds(device_id)
+
+        # If fetching from the cloud fails, try to use the local cache as a fallback.
+        if thresholds is None:
+            print("[Orchestrator] Cloud fetch failed. Falling back to local cache.")
+            thresholds = self.planning_service.get_cached_thresholds(device_id)
+
+        # --- Guard Clause: Abort only if BOTH sources fail ---
         if not current_state or not thresholds:
-            # Determine the specific reason for failure.
-            reason = "Missing local state data" if not current_state else "Missing thresholds from cloud"
-
-            # Create a log entry for the aborted cycle for debugging purposes.
+            reason = "Missing local state data" if not current_state else "FATAL: Could not get thresholds from cloud OR local cache"
             aborted_log = WateringExecution(
-                device_id=device_id,
-                duration_seconds=0,
-                timestamp=datetime.now(timezone.utc),
-                success=False,
-                reason=f"Cycle aborted: {reason}"
+                device_id=device_id, duration_seconds=0,
+                timestamp=datetime.now(timezone.utc), success=False,
+                reason=reason
             )
-            # Save the failure log locally...
             saved_log = self.repository.save(aborted_log)
-            # ...and try to sync it to the cloud so we are aware of the problem.
             self.cloud_client.push_watering_log(saved_log)
-            # Exit the function immediately.
             return saved_log
 
-        # --- "Happy Path" continues here, un-nested and clean ---
+        # --- "Happy Path" continues here, using either fresh or cached thresholds ---
 
-        # --- 3. Think: Delegate to the pure domain service to make a decision ---
-        # This is now only called ONCE, in the success case.
+        # 3. Think: Delegate to the pure domain service.
         action = self.decision_service.decide_action(current_state, thresholds)
 
         # --- 4. Act: Perform the physical action if needed ---

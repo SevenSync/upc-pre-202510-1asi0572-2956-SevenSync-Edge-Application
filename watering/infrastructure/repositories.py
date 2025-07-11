@@ -10,7 +10,7 @@ class WateringRepository:
             duration_seconds=model.duration_seconds,
             timestamp=model.timestamp,
             success=model.success,
-            reason=model.reason # ADDED
+            reason=model.reason
         )
 
     @staticmethod
@@ -20,6 +20,6 @@ class WateringRepository:
             duration_seconds=execution.duration_seconds,
             timestamp=execution.timestamp,
             success=execution.success,
-            reason=execution.reason # ADDED
+            reason=execution.reason
         )
         return WateringRepository._to_entity(record)

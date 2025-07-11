@@ -20,9 +20,9 @@ class AuthApplicationService:
         """
         # Authenticates a device by checking if a valid record exists.
         """
-        print(f"DEBUG: Authenticating with -> deviceId: '{device_id}', apiKey: '{api_key}'")  # <-- AÑADIR ESTO
+        print(f"DEBUG: Authenticating with -> deviceId: '{device_id}', apiKey: '{api_key}'")
         device: Optional[Device] = self.device_repository.find_by_id_and_api_key(device_id, api_key)
-        print(f"DEBUG: Repository found device -> {device.__dict__ if device else 'None'}")  # <-- AÑADIR ESTO
+        print(f"DEBUG: Repository found device -> {device.__dict__ if device else 'None'}")
         return self.auth_service.authenticate(device)
 
     def get_or_create_test_device(self) -> Device:

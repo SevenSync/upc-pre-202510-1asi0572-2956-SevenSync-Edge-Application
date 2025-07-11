@@ -2,10 +2,12 @@
 from apscheduler.schedulers.background import BackgroundScheduler
 from flask import Flask
 
+# --- Interface Imports ---
 from arm.interfaces.services import arm_api
 from iam.domain.services import AuthService
 from iam.infrastructure.repositories import DeviceRepository
 from iam.interfaces.controllers import iam_api
+
 # --- Infrastructure Imports ---
 from shared.infrastructure.database import db, init_db_tables
 from shared.infrastructure.clients import CloudClient
@@ -30,7 +32,7 @@ from watering.domain.services import WateringDecisionService
 # --- Repository Imports ---
 from arm.infrastructure.repositories import PotStateRepository
 from watering.infrastructure.repositories import WateringRepository
-
+from planning.infrastructure.repositories import ThresholdRepository
 
 # --- Placeholder for Hardware Interaction ---
 class DeviceClient:
@@ -61,9 +63,10 @@ device_client = DeviceClient()
 device_repo = DeviceRepository()
 pot_state_repo = PotStateRepository()
 watering_repo = WateringRepository()
+threshold_repo = ThresholdRepository()
 
 # --- Domain Service Instances (stateless) ---
-domain_auth_service = AuthService() # <-- ADD
+domain_auth_service = AuthService()
 domain_arm_service = ArmService()
 domain_planning_service = PlanningService()
 watering_decision_service = WateringDecisionService()
@@ -83,10 +86,10 @@ arm_app_service = ArmApplicationService(
 
 planning_app_service = PlanningApplicationService(
     cloud_client=cloud_client,
-    auth_service=auth_service
+    auth_service=auth_service,
+    threshold_repo=threshold_repo
 )
 
-# THIS IS THE CORRECTED BLOCK
 watering_orchestrator = WateringOrchestrator(
     decision_service=watering_decision_service,
     planning_service=planning_app_service,
